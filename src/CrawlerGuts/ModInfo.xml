@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<xml>
+	<Name value="CrawlerGuts" />
+	<DisplayName value="CrawlerGuts" />
+	<Description value="A crawler zombie is a half-eaten corpse dragging its guts along the ground, so it loses a little health for every block it drags itself toward you. Damage per block, a health floor and an optional bleed are all settable in-game. Compatible with Undead Legacy." />
+	<Author value="John Rando" />
+	<Version value="0.0.0.1" />
+	<Website value="" />
+</xml>
