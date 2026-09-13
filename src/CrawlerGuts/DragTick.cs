@@ -38,6 +38,9 @@ namespace CrawlerGuts
 		/// a drag, and is not counted.</summary>
 		private const float MaxStepPerTick = 5f;
 
+		/// <summary>How far ahead of the drag roll the arrow roll runs, in metres.</summary>
+		private const float ArrowRollOffset = 0.5f;
+
 		/// <summary>A tracker not touched for this long belongs to a crawler that is gone.</summary>
 		private const float StaleSeconds = 10f;
 
@@ -52,6 +55,11 @@ namespace CrawlerGuts
 
 			/// <summary>Metres since the last bleed roll.</summary>
 			internal float SinceRoll;
+
+			/// <summary>Metres since the last arrow roll. Starts half a block ahead of
+			/// <see cref="SinceRoll"/>, so the two rolls fall on alternate half-blocks and never
+			/// on the same one: a block never gets both a drag bleed and an arrow pull.</summary>
+			internal float SinceArrowRoll = ArrowRollOffset;
 
 			internal float LastSeen;
 		}
@@ -120,11 +128,18 @@ namespace CrawlerGuts
 			Counters.BlocksDragged += step;
 			tracker.Owed += step * Settings.DamagePerBlock;
 			tracker.SinceRoll += step;
+			tracker.SinceArrowRoll += step;
 
 			if (tracker.SinceRoll >= 1f)
 			{
 				tracker.SinceRoll -= 1f;
 				RollBleed(__instance, player);
+			}
+
+			if (tracker.SinceArrowRoll >= 1f)
+			{
+				tracker.SinceArrowRoll -= 1f;
+				RollArrowPull(__instance, player);
 			}
 
 			int hit = (int)tracker.Owed;
@@ -166,20 +181,58 @@ namespace CrawlerGuts
 			{
 				return;
 			}
+			if (StartBleed(_crawler, _player))
+			{
+				Counters.BleedsStarted++;
+				Last = _crawler.EntityName + " started bleeding";
+			}
+		}
+
+		/// <summary>
+		/// The FletchWounds interaction, on the half-blocks the drag roll skips: a crawler with one
+		/// of the player's arrows still in it works the arrowhead deeper, which is FletchWounds'
+		/// own pull effect - its damage, its stack of bleed, its sound - rather than anything of
+		/// this mod's. FletchWounds does the arrow search, so this only rolls and hands over.
+		///
+		/// A crawler that is already bleeding is skipped: FletchWounds' bleed stacks and refreshes
+		/// the way a blade does, and this mod's rule is that no bleed already running - a blade's,
+		/// the drag roll's, or FletchWounds' own - is ever touched by anything it starts.
+		/// </summary>
+		private static void RollArrowPull(EntityAlive _crawler, EntityPlayer _player)
+		{
+			if (!FletchWoundsInterop.Active
+				|| _crawler.rand.RandomFloat * 100f >= Settings.ArrowBleedChance)
+			{
+				return;
+			}
 			if (_crawler.Buffs.HasBuff(BleedBuff))
 			{
 				return;
+			}
+			if (FletchWoundsInterop.TryProc(_crawler, _player))
+			{
+				Counters.ArrowProcs++;
+				Last = _crawler.EntityName + " worked " + _player.EntityName + "'s arrow deeper";
+			}
+		}
+
+		/// <summary>
+		/// One stack of the game's own bleed on a crawler that has none. The counter is set rather
+		/// than bumped, and nothing is touched while any bleed is running, so a blade's stacked
+		/// bleed is never reduced, refreshed or extended by this.
+		/// </summary>
+		private static bool StartBleed(EntityAlive _crawler, EntityPlayer _player)
+		{
+			if (_crawler.Buffs.HasBuff(BleedBuff))
+			{
+				return false;
 			}
 
 			// Both calls net-sync themselves. An absent buff definition returns FailedInvalidName
 			// rather than throwing.
 			_crawler.Buffs.SetCustomVar(BleedCounter, 1f);
 			int instigator = Settings.CreditPlayer ? _player.entityId : -1;
-			if (_crawler.Buffs.AddBuff(BleedBuff, instigator) == EntityBuffs.BuffStatus.Added)
-			{
-				Counters.BleedsStarted++;
-				Last = _crawler.EntityName + " started bleeding";
-			}
+			return _crawler.Buffs.AddBuff(BleedBuff, instigator) == EntityBuffs.BuffStatus.Added;
 		}
 
 		private static void Damage(EntityAlive _crawler, EntityPlayer _player, int _hit)
@@ -205,9 +258,17 @@ namespace CrawlerGuts
 			// 1 it fails the PainHit threshold too, so no hit reaction. _impulseScale 0 means no
 			// knockback. With the credit switch on the source owns the player's id, which is the
 			// only thing that makes a death count as their kill.
+			//
+			// Internal, as the game's own bleed and fall damage are, rather than External: a hit
+			// credited to the local player from more than 10 m away while they hold anything
+			// tagged "ranged" plays the hit-marker thud in their head (EntityAlive.cs:4600-4612),
+			// and only Internal is exempt - otherwise a bow in hand made every drag tick thud.
+			// Internal also means AffectedByArmor() is false, so armour cannot round the damage
+			// down and 'cg dmg' means what it says, and it skips the per-source 30-tick throttle
+			// that External shares with unrelated damage.
 			DamageSource source = Settings.CreditPlayer
-				? new DamageSourceEntity(EnumDamageSource.External, EnumDamageTypes.BloodLoss, _player.entityId)
-				: new DamageSource(EnumDamageSource.External, EnumDamageTypes.BloodLoss);
+				? new DamageSourceEntity(EnumDamageSource.Internal, EnumDamageTypes.BloodLoss, _player.entityId)
+				: new DamageSource(EnumDamageSource.Internal, EnumDamageTypes.BloodLoss);
 			source.DismemberChance = 0f;
 
 			int applied = _crawler.DamageEntity(source, strength, _criticalHit: false, _impulseScale: 0f);

@@ -2,8 +2,8 @@
 <xml>
 	<Name value="CrawlerGuts" />
 	<DisplayName value="CrawlerGuts" />
-	<Description value="A crawler zombie is a half-eaten corpse dragging its guts along the ground, so it loses a little health for every block it drags itself toward you. Damage per block, a health floor and an optional bleed are all settable in-game. Compatible with Undead Legacy." />
+	<Description value="A crawler zombie is a half-eaten corpse dragging its guts along the ground, so it loses a little health for every block it drags itself toward you. Damage per block, a health floor and an optional bleed are all settable in-game. Compatible with Undead Legacy; with FletchWounds, a crawler dragging one of your arrows around can bleed from it." />
 	<Author value="John Rando" />
-	<Version value="0.0.0.1" />
+	<Version value="0.0.0.2" />
 	<Website value="" />
 </xml>

@@ -33,8 +33,26 @@ namespace CrawlerGuts
 
 		/// <summary>
 		/// Credit drag damage and the bleed to the player being chased, so a crawler that dies of
-		/// it counts as that player's kill and pays XP. Off leaves the damage unowned.
+		/// it counts as that player's kill and pays XP. Off by default: the player did nothing to
+		/// earn a kill from a crawler that merely chased them, so the damage and the bleed are
+		/// owned by nobody (instigator -1, the engine's own "no one").
 		/// </summary>
-		internal static bool CreditPlayer = true;
+		internal static bool CreditPlayer = false;
+
+		/// <summary>
+		/// The family's linked switch for interactions with the other mods. With FletchWounds
+		/// installed, a crawler dragging itself with one of the player's arrows in it gets a
+		/// separate roll to work it deeper. Off, this mod ignores the other mods entirely.
+		/// </summary>
+		internal static bool Flavor = true;
+
+		/// <summary>
+		/// Percent chance, rolled once per block dragged and half a block out of step with
+		/// <see cref="BleedChance"/> so the two never roll on the same block, to hand a crawler
+		/// with one of the player's arrows stuck in it to FletchWounds for its own arrow effect.
+		/// Only a crawler that is not already bleeding is handed over, so no running bleed is ever
+		/// added to or refreshed. 0 switches it off. Needs FletchWounds and <see cref="Flavor"/>.
+		/// </summary>
+		internal static float ArrowBleedChance = 10f;
 	}
 }

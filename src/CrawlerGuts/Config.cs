@@ -140,6 +140,8 @@ namespace CrawlerGuts
 			Setting(text, "floor", Settings.FloorPercent.ToString(), "cg floor {pct} - percent of max health");
 			Setting(text, "bleed", Number(Settings.BleedChance), "cg bleed {pct} - chance per block, 0 = off");
 			Setting(text, "credit", OnOff(Settings.CreditPlayer), "cg credit");
+			Setting(text, "flavor", OnOff(Settings.Flavor), "cg flavor - interactions with other mods");
+			Setting(text, "arrow", Number(Settings.ArrowBleedChance), "cg arrow {pct} - chance per block with a FletchWounds arrow in, 0 = off");
 			return text.ToString();
 		}
 
@@ -206,6 +208,10 @@ namespace CrawlerGuts
 				return LoadPercent(_value, ref Settings.BleedChance);
 			case "credit":
 				return TryBool(_value, ref Settings.CreditPlayer);
+			case "flavor":
+				return TryBool(_value, ref Settings.Flavor);
+			case "arrow":
+				return LoadPercent(_value, ref Settings.ArrowBleedChance);
 			default:
 				return false;
 			}

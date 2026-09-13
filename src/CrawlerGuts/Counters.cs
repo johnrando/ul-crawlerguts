@@ -18,6 +18,9 @@ namespace CrawlerGuts
 
 		internal static int BleedsStarted;
 
+		/// <summary>Arrow rolls FletchWounds acted on: the crawler had an arrow in it.</summary>
+		internal static int ArrowProcs;
+
 		/// <summary>Crawlers that died to drag damage with the credit switch on.</summary>
 		internal static int KillsCredited;
 
@@ -27,6 +30,7 @@ namespace CrawlerGuts
 			DamageDealt = 0;
 			SparedByFloor = 0;
 			BleedsStarted = 0;
+			ArrowProcs = 0;
 			KillsCredited = 0;
 		}
 	}

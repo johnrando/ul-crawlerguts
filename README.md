@@ -31,7 +31,9 @@ CrawlerGuts is ON
   cg dmg {hp}         : 1 health per block dragged
   cg floor {pct}      : never dragged below 10% of max health (a bleed can still kill)
   cg bleed {pct}      : 10% chance per block to start bleeding, if not already
-  cg credit           : [ >on< | off ]   - drag damage and bleed count as your kill
+  cg credit           : [ on | >off< ]   - drag damage and bleed count as your kill
+  cg flavor           : [ >on< | off ]   - enhanced mod interaction with FletchWounds
+  cg arrow {pct}      : 10% chance per block to work a FletchWounds arrow deeper, if not bleeding
 ```
 
 `cg on` and `cg off` are the master switch — with it off the tick hook returns immediately, so
@@ -65,11 +67,27 @@ spider zombie is a different rig and is not affected.
   is not already bleeding gets one, and a bleed that is already running, from this mod or from a
   blade, is **never refreshed, extended or stacked** by this mod. The bleed is a buff and pays no
   attention to the floor, so a bleeding crawler can still die. 0 switches it off.
-- **Your kill.** With `cg credit` on (the default) the drag damage and the bleed carry the chased
-  player's id, so a crawler that dies of either is that player's kill for score, quests and XP.
-  Off, the damage is owned by nobody.
+- **Nobody's kill.** By default the drag damage and the bleed are owned by nobody: being chased
+  is not the same as fighting back, so a crawler that dies of either is not your kill and pays
+  no XP. `cg credit` on gives the damage and the bleed the chased player's id, so such a death
+  counts as that player's kill for score, quests and XP.
 - **Nothing else.** No knockback, no hit reaction, no stun, no dismemberment from the drag damage
   itself.
+
+## FletchWounds
+
+With [FletchWounds](../ul-fletchwounds) installed, a crawler dragging itself along with one of your
+arrows still stuck in it gets a **second, separate** `cg arrow` percent chance per block to work
+the arrowhead deeper. That is FletchWounds' own arrow effect, exactly as if you had pulled the
+arrow: its damage, its stab sound and its one stack of bleed, credited to you and tuned with `fw`.
+It is rolled half a block out of step with `cg bleed`, so the two never roll on the same block, and
+only a crawler that is **not already bleeding** is handed over, so a bleed that is already running,
+from a blade, from dragging or from FletchWounds itself, is never added to or refreshed by it. An
+arrowed crawler hurts itself more often, not harder.
+
+`cg flavor` is the family's linked switch for these interactions, on by default. Toggling it here
+also sets FletchWounds' `fw flavor`. `cg arrow 0` switches just this roll off. Without
+FletchWounds the switch and the setting do nothing, and `cg info` says so.
 
 ## Defaults
 
@@ -80,7 +98,9 @@ All settable in-game, and all written back to the settings file as soon as you s
 | damage per block | 1 HP |
 | never-kill floor | 10% of max health |
 | bleed chance per block | 10% |
-| credit the chased player | on |
+| credit the chased player | off |
+| mod interactions (flavor) | on |
+| arrow chance per block | 10% (needs FletchWounds) |
 
 ## Settings file
 
@@ -101,7 +121,9 @@ enabled = on       # cg on|off
 damage  = 1        # cg dmg {hp} - health per block dragged
 floor   = 10       # cg floor {pct} - percent of max health
 bleed   = 10       # cg bleed {pct} - chance per block, 0 = off
-credit  = on       # cg credit
+credit  = off      # cg credit
+flavor  = on       # cg flavor - interactions with other mods
+arrow   = 10       # cg arrow {pct} - chance per block with a FletchWounds arrow in, 0 = off
 ```
 
 Edit it by hand with the game closed — it is rewritten whenever a `cg` command changes something.
@@ -124,10 +146,10 @@ alone.
 
 ## Limitations
 
-- **Dedicated servers.** The drag damage and kill credit are server-side and work anywhere. XP
-  for a crawler that dies of the *bleed* comes from the game's own buff-death path, which only
-  pays out on the local player — so on a dedicated server a bleed death is credited but grants
-  no XP. A drag-damage death always grants XP.
+- **Dedicated servers.** The drag damage and kill credit are server-side and work anywhere. With
+  `cg credit` on, XP for a crawler that dies of the *bleed* comes from the game's own buff-death
+  path, which only pays out on the local player — so on a dedicated server a bleed death is
+  credited but grants no XP. A credited drag-damage death always grants XP.
 - **Clients on a dedicated server cannot use `cg`** — the settings live on the server.
 
 ## Building

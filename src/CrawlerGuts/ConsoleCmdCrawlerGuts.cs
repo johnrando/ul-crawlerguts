@@ -46,6 +46,17 @@ namespace CrawlerGuts
 					: "Credit OFF - drag damage and the bleed are owned by nobody.");
 				return;
 
+			case "flavor":
+				Settings.Flavor = !Settings.Flavor;
+				Config.Save();
+				FletchWoundsInterop.PushFlavor(Settings.Flavor);
+				Output(FletchWoundsInterop.Describe());
+				return;
+
+			case "arrow":
+				SetArrow(_params);
+				return;
+
 			case "info":
 				OutputInfo();
 				return;
@@ -57,7 +68,7 @@ namespace CrawlerGuts
 
 			default:
 				Output("Unknown option '" + _params[0]
-					+ "'. Try: cg [on|off|dmg|floor|bleed|credit|info|reset]");
+					+ "'. Try: cg [on|off|dmg|floor|bleed|credit|flavor|arrow|info|reset]");
 				return;
 			}
 		}
@@ -70,6 +81,8 @@ namespace CrawlerGuts
 			Line("cg floor {pct}", FloorLine());
 			Line("cg bleed {pct}", BleedLine());
 			Switch("cg credit", CreditChoices(), "drag damage and bleed count as your kill");
+			Switch("cg flavor", FlavorChoices(), FletchWoundsInterop.FlavorSummary);
+			Line("cg arrow {pct}", ArrowLine());
 		}
 
 		/// <summary>The header says whether anything moved: typing the state you were already in
@@ -96,12 +109,14 @@ namespace CrawlerGuts
 			OutputMenu("CrawlerGuts is " + OnOff(Settings.Enabled));
 			Line("settings file", Config.Status);
 			Line("Undead Legacy", UndeadLegacyInfo.Status);
+			Line(FletchWoundsInterop.Label, FletchWoundsInterop.Status);
 			Line("tick hook", Patches.TickHookStatus);
 			Line("crawlers tracked now", DragTick.TrackedNow.ToString());
 			Line("blocks dragged", Config.Number((float)System.Math.Round(Counters.BlocksDragged, 1)));
 			Line("damage dealt", Counters.DamageDealt + " health, " + Counters.SparedByFloor
 				+ " tick(s) spared by the floor");
 			Line("bleeds started", Counters.BleedsStarted.ToString());
+			Line("arrows worked deeper", Counters.ArrowProcs + " (by " + FletchWoundsInterop.Label + ")");
 			Line("kills credited", Counters.KillsCredited.ToString());
 			Line("last event", DragTick.Last);
 
@@ -202,6 +217,49 @@ namespace CrawlerGuts
 			return Choices(Mark("on", Settings.CreditPlayer), Mark("off", !Settings.CreditPlayer));
 		}
 
+		private static string FlavorChoices()
+		{
+			return Choices(Mark("on", Settings.Flavor), Mark("off", !Settings.Flavor));
+		}
+
+		private static void SetArrow(List<string> _params)
+		{
+			if (_params.Count != 2)
+			{
+				Output("Usage: cg arrow {pct} - currently: " + ArrowLine());
+				return;
+			}
+
+			if (!Config.TryPercent(_params[1], out float chance))
+			{
+				Output("'" + _params[1] + "' is not a valid chance - numbers from 0 to 100, like 12.5.");
+				return;
+			}
+
+			Settings.ArrowBleedChance = chance;
+			Config.Save();
+			Output("Arrow: " + ArrowLine());
+		}
+
+		private static string ArrowLine()
+		{
+			if (Settings.ArrowBleedChance <= 0f)
+			{
+				return "off - an arrow in a crawler changes nothing";
+			}
+			string line = Config.Number(Settings.ArrowBleedChance)
+				+ "% chance per block to work a FletchWounds arrow deeper, if not bleeding";
+			if (!FletchWoundsInterop.Present)
+			{
+				return line + " (FletchWounds not installed)";
+			}
+			if (!FletchWoundsInterop.Wired)
+			{
+				return line + " (FletchWounds could not be bound - see cg info)";
+			}
+			return Settings.Flavor ? line : line + " (flavor is off)";
+		}
+
 		private static string DamageLine()
 		{
 			if (Settings.DamagePerBlock <= 0f)
@@ -248,7 +306,7 @@ namespace CrawlerGuts
 
 		public override string getHelp()
 		{
-			return "Usage: cg [on|off|dmg {hp}|floor {pct}|bleed {pct}|credit|info|reset]"
+			return "Usage: cg [on|off|dmg {hp}|floor {pct}|bleed {pct}|credit|flavor|arrow {pct}|info|reset]"
 				+ "\r\n\r\nA crawler zombie is a half-eaten corpse dragging its guts across the "
 				+ "ground, so it loses a little health for every block it drags itself while it is "
 				+ "locked onto a player. It costs nothing while the crawler is idle, wandering or "
@@ -280,10 +338,24 @@ namespace CrawlerGuts
 				+ "that is already running - from this mod or from a blade - is never refreshed, "
 				+ "extended or stacked by this, so a serrated blade's stack is left exactly as the "
 				+ "blade left it."
-				+ "\r\n\r\n'cg credit' toggles who owns the damage, on by default. On, the drag "
+				+ "\r\n\r\n'cg credit' toggles who owns the damage, off by default. On, the drag "
 				+ "damage and the bleed carry the chased player's id, so a crawler that dies of "
-				+ "either is that player's kill for score, quests and XP. Off, the damage is owned "
-				+ "by nobody and a crawler that dies of it is nobody's kill."
+				+ "either is that player's kill for score, quests and XP. Off, the damage and the "
+				+ "bleed are owned by nobody and a crawler that dies of them is nobody's kill - "
+				+ "being chased is not the same as fighting back."
+				+ "\r\n\r\n'cg flavor' toggles the interactions with the other mods in this family, "
+				+ "on by default, and is linked: toggling it here also sets FletchWounds' 'fw flavor'. "
+				+ "With FletchWounds installed, a crawler dragging itself along with one of your "
+				+ "arrows still stuck in it gets a second, separate chance per block to work the "
+				+ "arrowhead deeper - which is FletchWounds' own arrow effect, exactly as if you had "
+				+ "pulled the arrow: its damage, its stab sound, and its one stack of bleed, all "
+				+ "credited to you and set by 'fw'. It is rolled half a block out of step with "
+				+ "'cg bleed', so the two never roll on the same block, and only a crawler that is "
+				+ "not already bleeding is handed over, so a bleed that is already running - from a "
+				+ "blade, from dragging, or from FletchWounds itself - is never added to or "
+				+ "refreshed by it. Without FletchWounds it does nothing."
+				+ "\r\n\r\n'cg arrow {pct}' sets that chance, 10 by default and 0 to switch it off "
+				+ "while leaving the flavor switch alone."
 				+ "\r\n\r\nEvery setting here takes effect immediately and is written straight to a "
 				+ "settings file, so it survives a restart - and survives updating the mod, because "
 				+ "the file lives in the game's user data folder next to Saves rather than in Mods. "
