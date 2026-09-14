@@ -169,7 +169,7 @@ That restages `dist/CrawlerGuts/`, ready to copy into `Mods/`. To also build the
 dotnet build src/CrawlerGuts/CrawlerGuts.csproj -c Release -t:Package
 ```
 
-That writes `release/CrawlerGuts-<version>-<date>.zip`, taking the version from `ModInfo.xml`.
+That writes `release/CrawlerGuts-v<version>-<date>.zip`, taking the version from `ModInfo.xml`.
 Neither `dist/` nor `release/` is tracked — the zip is published as a GitHub Release instead.
 
 ## License
