@@ -39,19 +39,15 @@ namespace CrawlerGuts
 		/// </summary>
 		internal static bool CreditPlayer = false;
 
-		/// <summary>
-		/// The family's linked switch for interactions with the other mods. With FletchWounds
-		/// installed, a crawler dragging itself with one of the player's arrows in it gets a
-		/// separate roll to work it deeper. Off, this mod ignores the other mods entirely.
-		/// </summary>
-		internal static bool Flavor = true;
+		// The per-partner flavor switches live in FlavorSwitches: one per mod this one links up
+		// with, all on by default, and mirrored pairwise rather than as one shared value.
 
 		/// <summary>
 		/// Percent chance, rolled once per block dragged and half a block out of step with
 		/// <see cref="BleedChance"/> so the two never roll on the same block, to hand a crawler
 		/// with one of the player's arrows stuck in it to FletchWounds for its own arrow effect.
 		/// Only a crawler that is not already bleeding is handed over, so no running bleed is ever
-		/// added to or refreshed. 0 switches it off. Needs FletchWounds and <see cref="Flavor"/>.
+		/// added to or refreshed. 0 switches it off. Needs FletchWounds and its flavor switch.
 		/// </summary>
 		internal static float ArrowBleedChance = 10f;
 	}

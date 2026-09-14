@@ -32,7 +32,7 @@ CrawlerGuts is ON
   cg floor {pct}      : never dragged below 10% of max health (a bleed can still kill)
   cg bleed {pct}      : 10% chance per block to start bleeding, if not already
   cg credit           : [ on | >off< ]   - drag damage and bleed count as your kill
-  cg flavor           : [ >on< | off ]   - enhanced mod interaction with FletchWounds
+  cg flavor fw        : [ >on< | off ]   - FletchWounds: a dragging crawler works your arrows deeper
   cg arrow {pct}      : 10% chance per block to work a FletchWounds arrow deeper, if not bleeding
 ```
 
@@ -85,9 +85,11 @@ only a crawler that is **not already bleeding** is handed over, so a bleed that 
 from a blade, from dragging or from FletchWounds itself, is never added to or refreshed by it. An
 arrowed crawler hurts itself more often, not harder.
 
-`cg flavor` is the family's linked switch for these interactions, on by default. Toggling it here
-also sets FletchWounds' `fw flavor`. `cg arrow 0` switches just this roll off. Without
-FletchWounds the switch and the setting do nothing, and `cg info` says so.
+`cg flavor` lists the interactions with the other mods in this family, one switch per mod, on
+by default, and changes nothing; `cg flavor fw` toggles this one and `cg flavor on|off` sets them
+all. The switch is a pair: `cg flavor fw` and `fw flavor cg` set each other, and touch nothing
+else, so FletchWounds' interaction with DoorSlammer is unaffected. `cg arrow 0` switches just
+this roll off. Without FletchWounds the switch and the setting do nothing, and `cg info` says so.
 
 ## Defaults
 
@@ -99,7 +101,7 @@ All settable in-game, and all written back to the settings file as soon as you s
 | never-kill floor | 10% of max health |
 | bleed chance per block | 10% |
 | credit the chased player | off |
-| mod interactions (flavor) | on |
+| flavor with FletchWounds | on |
 | arrow chance per block | 10% (needs FletchWounds) |
 
 ## Settings file
@@ -117,13 +119,13 @@ read or write worked.
 It is plain `key = value` text, one line per setting, each naming the command that sets it:
 
 ```
-enabled = on       # cg on|off
-damage  = 1        # cg dmg {hp} - health per block dragged
-floor   = 10       # cg floor {pct} - percent of max health
-bleed   = 10       # cg bleed {pct} - chance per block, 0 = off
-credit  = off      # cg credit
-flavor  = on       # cg flavor - interactions with other mods
-arrow   = 10       # cg arrow {pct} - chance per block with a FletchWounds arrow in, 0 = off
+enabled             = on       # cg on|off
+damage              = 1        # cg dmg {hp} - health per block dragged
+floor               = 10       # cg floor {pct} - percent of max health
+bleed               = 10       # cg bleed {pct} - chance per block, 0 = off
+credit              = off      # cg credit
+flavor.fletchwounds = on       # cg flavor fw - interaction with FletchWounds
+arrow               = 10       # cg arrow {pct} - chance per block with a FletchWounds arrow in, 0 = off
 ```
 
 Edit it by hand with the game closed — it is rewritten whenever a `cg` command changes something.

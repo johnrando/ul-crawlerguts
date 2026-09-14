@@ -43,7 +43,7 @@ namespace CrawlerGuts
 		private static void ApplyPatches()
 		{
 			UndeadLegacyInfo.Report();
-			FletchWoundsInterop.Report();
+			FlavorPartners.Resolve();
 
 			Harmony harmony = new Harmony(HarmonyId);
 			ApplyTickHook(harmony);

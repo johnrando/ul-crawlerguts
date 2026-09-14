@@ -200,7 +200,7 @@ namespace CrawlerGuts
 		/// </summary>
 		private static void RollArrowPull(EntityAlive _crawler, EntityPlayer _player)
 		{
-			if (!FletchWoundsInterop.Active
+			if (!FlavorPartners.ArrowActive
 				|| _crawler.rand.RandomFloat * 100f >= Settings.ArrowBleedChance)
 			{
 				return;
@@ -209,7 +209,7 @@ namespace CrawlerGuts
 			{
 				return;
 			}
-			if (FletchWoundsInterop.TryProc(_crawler, _player))
+			if (FlavorPartners.FletchWounds.TryProc(_crawler, _player))
 			{
 				Counters.ArrowProcs++;
 				Last = _crawler.EntityName + " worked " + _player.EntityName + "'s arrow deeper";

@@ -140,7 +140,11 @@ namespace CrawlerGuts
 			Setting(text, "floor", Settings.FloorPercent.ToString(), "cg floor {pct} - percent of max health");
 			Setting(text, "bleed", Number(Settings.BleedChance), "cg bleed {pct} - chance per block, 0 = off");
 			Setting(text, "credit", OnOff(Settings.CreditPlayer), "cg credit");
-			Setting(text, "flavor", OnOff(Settings.Flavor), "cg flavor - interactions with other mods");
+			foreach (string label in FlavorSwitches.Labels)
+			{
+				Setting(text, "flavor." + label.ToLowerInvariant(), OnOff(FlavorSwitches.IsOn(label)),
+					"cg flavor " + FlavorPartners.AliasOf(label) + " - interaction with " + label);
+			}
 			Setting(text, "arrow", Number(Settings.ArrowBleedChance), "cg arrow {pct} - chance per block with a FletchWounds arrow in, 0 = off");
 			return text.ToString();
 		}
@@ -148,7 +152,7 @@ namespace CrawlerGuts
 		/// <summary>One setting, padded so the values and the commands each share a column.</summary>
 		private static void Setting(StringBuilder _text, string _key, string _value, string _command)
 		{
-			_text.AppendLine(_key.PadRight(8) + "= " + _value.PadRight(8) + " # " + _command);
+			_text.AppendLine(_key.PadRight(19) + "= " + _value.PadRight(8) + " # " + _command);
 		}
 
 		private enum LineResult
@@ -209,12 +213,35 @@ namespace CrawlerGuts
 			case "credit":
 				return TryBool(_value, ref Settings.CreditPlayer);
 			case "flavor":
-				return TryBool(_value, ref Settings.Flavor);
+				// The single switch older builds wrote: apply it to every partner.
+				return TryFlavor(null, _value);
 			case "arrow":
 				return LoadPercent(_value, ref Settings.ArrowBleedChance);
 			default:
+				// flavor.<mod>: one partner's switch. Any label is accepted, so a switch a mod
+				// this build does not know about created is kept.
+				return _key.StartsWith("flavor.") && _key.Length > 7
+					&& TryFlavor(_key.Substring(7), _value);
+			}
+		}
+
+		/// <summary>One partner's switch, or every partner's when the label is null.</summary>
+		private static bool TryFlavor(string _label, string _value)
+		{
+			bool on = false;
+			if (!TryBool(_value, ref on))
+			{
 				return false;
 			}
+			if (_label == null)
+			{
+				FlavorSwitches.SetAll(on);
+			}
+			else
+			{
+				FlavorSwitches.Set(_label, on);
+			}
+			return true;
 		}
 
 		/// <summary>Accepts what the file writes plus the obvious hand-edit synonyms.</summary>

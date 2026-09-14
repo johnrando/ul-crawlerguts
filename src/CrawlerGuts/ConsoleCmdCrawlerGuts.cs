@@ -47,10 +47,7 @@ namespace CrawlerGuts
 				return;
 
 			case "flavor":
-				Settings.Flavor = !Settings.Flavor;
-				Config.Save();
-				FletchWoundsInterop.PushFlavor(Settings.Flavor);
-				Output(FletchWoundsInterop.Describe());
+				SetFlavor(_params);
 				return;
 
 			case "arrow":
@@ -68,7 +65,7 @@ namespace CrawlerGuts
 
 			default:
 				Output("Unknown option '" + _params[0]
-					+ "'. Try: cg [on|off|dmg|floor|bleed|credit|flavor|arrow|info|reset]");
+					+ "'. Try: cg [on|off|dmg|floor|bleed|credit|flavor {mod}|arrow|info|reset]");
 				return;
 			}
 		}
@@ -81,8 +78,69 @@ namespace CrawlerGuts
 			Line("cg floor {pct}", FloorLine());
 			Line("cg bleed {pct}", BleedLine());
 			Switch("cg credit", CreditChoices(), "drag damage and bleed count as your kill");
-			Switch("cg flavor", FlavorChoices(), FletchWoundsInterop.FlavorSummary);
+			FlavorLines();
 			Line("cg arrow {pct}", ArrowLine());
+		}
+
+		/// <summary>
+		/// 'cg flavor' alone is a read. 'cg flavor {mod}' toggles that pair and mirrors it to that
+		/// mod only; 'cg flavor on|off' sets and mirrors every pair.
+		/// </summary>
+		private static void SetFlavor(List<string> _params)
+		{
+			if (_params.Count < 2)
+			{
+				FlavorLines();
+				return;
+			}
+
+			string arg = _params[1].ToLowerInvariant();
+			if (arg == "on" || arg == "off")
+			{
+				bool on = arg == "on";
+				FlavorSwitches.SetAll(on);
+				Config.Save();
+				FlavorPartners.PushAll(on);
+				Output("Flavor " + OnOff(on) + " for every partner: "
+					+ string.Join(", ", FlavorSwitches.Labels.ToArray()) + ".");
+				return;
+			}
+
+			string label = FlavorSwitches.Resolve(_params[1]);
+			if (label == null)
+			{
+				Output("'" + _params[1] + "' is not a partner this mod knows. Try: cg flavor ["
+					+ string.Join("|", Aliases()) + "|on|off]");
+				return;
+			}
+
+			bool now = !FlavorSwitches.IsOn(label);
+			FlavorSwitches.Set(label, now);
+			Config.Save();
+			FlavorPartners.Push(label, now);
+			Output(FlavorPartners.Describe(label));
+		}
+
+		/// <summary>One menu line per partner, known ones first.</summary>
+		private static void FlavorLines()
+		{
+			foreach (string label in FlavorSwitches.Labels)
+			{
+				bool on = FlavorSwitches.IsOn(label);
+				Switch("cg flavor " + FlavorPartners.AliasOf(label),
+					Choices(Mark("on", on), Mark("off", !on)), FlavorPartners.MenuNote(label));
+			}
+		}
+
+		private static string[] Aliases()
+		{
+			List<string> labels = FlavorSwitches.Labels;
+			string[] aliases = new string[labels.Count];
+			for (int i = 0; i < labels.Count; i++)
+			{
+				aliases[i] = FlavorPartners.AliasOf(labels[i]);
+			}
+			return aliases;
 		}
 
 		/// <summary>The header says whether anything moved: typing the state you were already in
@@ -109,14 +167,17 @@ namespace CrawlerGuts
 			OutputMenu("CrawlerGuts is " + OnOff(Settings.Enabled));
 			Line("settings file", Config.Status);
 			Line("Undead Legacy", UndeadLegacyInfo.Status);
-			Line(FletchWoundsInterop.Label, FletchWoundsInterop.Status);
+			for (int i = 0; i < FlavorPartners.All.Length; i++)
+			{
+				Line(FlavorPartners.All[i].Label, FlavorPartners.All[i].Status);
+			}
 			Line("tick hook", Patches.TickHookStatus);
 			Line("crawlers tracked now", DragTick.TrackedNow.ToString());
 			Line("blocks dragged", Config.Number((float)System.Math.Round(Counters.BlocksDragged, 1)));
 			Line("damage dealt", Counters.DamageDealt + " health, " + Counters.SparedByFloor
 				+ " tick(s) spared by the floor");
 			Line("bleeds started", Counters.BleedsStarted.ToString());
-			Line("arrows worked deeper", Counters.ArrowProcs + " (by " + FletchWoundsInterop.Label + ")");
+			Line("arrows worked deeper", Counters.ArrowProcs + " (by " + FlavorPartners.FletchWounds.Label + ")");
 			Line("kills credited", Counters.KillsCredited.ToString());
 			Line("last event", DragTick.Last);
 
@@ -217,11 +278,6 @@ namespace CrawlerGuts
 			return Choices(Mark("on", Settings.CreditPlayer), Mark("off", !Settings.CreditPlayer));
 		}
 
-		private static string FlavorChoices()
-		{
-			return Choices(Mark("on", Settings.Flavor), Mark("off", !Settings.Flavor));
-		}
-
 		private static void SetArrow(List<string> _params)
 		{
 			if (_params.Count != 2)
@@ -249,15 +305,16 @@ namespace CrawlerGuts
 			}
 			string line = Config.Number(Settings.ArrowBleedChance)
 				+ "% chance per block to work a FletchWounds arrow deeper, if not bleeding";
-			if (!FletchWoundsInterop.Present)
+			FlavorPartner fw = FlavorPartners.FletchWounds;
+			if (!fw.Found)
 			{
 				return line + " (FletchWounds not installed)";
 			}
-			if (!FletchWoundsInterop.Wired)
+			if (!fw.Wired)
 			{
 				return line + " (FletchWounds could not be bound - see cg info)";
 			}
-			return Settings.Flavor ? line : line + " (flavor is off)";
+			return FlavorSwitches.IsOn(fw.Label) ? line : line + " (cg flavor fw is off)";
 		}
 
 		private static string DamageLine()
@@ -306,7 +363,8 @@ namespace CrawlerGuts
 
 		public override string getHelp()
 		{
-			return "Usage: cg [on|off|dmg {hp}|floor {pct}|bleed {pct}|credit|flavor|arrow {pct}|info|reset]"
+			return "Usage: cg [on|off|dmg {hp}|floor {pct}|bleed {pct}|credit|flavor {mod}|flavor on|off"
+				+ "|arrow {pct}|info|reset]"
 				+ "\r\n\r\nA crawler zombie is a half-eaten corpse dragging its guts across the "
 				+ "ground, so it loses a little health for every block it drags itself while it is "
 				+ "locked onto a player. It costs nothing while the crawler is idle, wandering or "
@@ -343,8 +401,12 @@ namespace CrawlerGuts
 				+ "either is that player's kill for score, quests and XP. Off, the damage and the "
 				+ "bleed are owned by nobody and a crawler that dies of them is nobody's kill - "
 				+ "being chased is not the same as fighting back."
-				+ "\r\n\r\n'cg flavor' toggles the interactions with the other mods in this family, "
-				+ "on by default, and is linked: toggling it here also sets FletchWounds' 'fw flavor'. "
+				+ "\r\n\r\n'cg flavor' lists the interactions with the other mods in this family, "
+				+ "one switch per mod, all on by default, and changes nothing. 'cg flavor {mod}' "
+				+ "toggles one of them by that mod's command name - 'cg flavor fw' - and 'cg flavor "
+				+ "on' or 'cg flavor off' sets them all. Each pair is switched on both sides and "
+				+ "toggling it in either one sets both, so 'cg flavor fw' and 'fw flavor cg' are the "
+				+ "same switch; FletchWounds' other pairs are not touched. "
 				+ "With FletchWounds installed, a crawler dragging itself along with one of your "
 				+ "arrows still stuck in it gets a second, separate chance per block to work the "
 				+ "arrowhead deeper - which is FletchWounds' own arrow effect, exactly as if you had "
@@ -355,7 +417,7 @@ namespace CrawlerGuts
 				+ "blade, from dragging, or from FletchWounds itself - is never added to or "
 				+ "refreshed by it. Without FletchWounds it does nothing."
 				+ "\r\n\r\n'cg arrow {pct}' sets that chance, 10 by default and 0 to switch it off "
-				+ "while leaving the flavor switch alone."
+				+ "while leaving the flavor switches alone."
 				+ "\r\n\r\nEvery setting here takes effect immediately and is written straight to a "
 				+ "settings file, so it survives a restart - and survives updating the mod, because "
 				+ "the file lives in the game's user data folder next to Saves rather than in Mods. "
